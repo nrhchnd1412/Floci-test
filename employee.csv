@@ -1,0 +1,11 @@
+employee_id,first_name,last_name,email,department,title,salary,hire_date,status
+E001,Aarav,Sharma,aarav.sharma@example.com,Engineering,Software Engineer,98000,2021-03-15,Active
+E002,Diya,Patel,diya.patel@example.com,Finance,Financial Analyst,82000,2020-11-02,Active
+E003,Rohan,Verma,rohan.verma@example.com,HR,HR Specialist,71000,2019-07-24,Active
+E004,Anaya,Gupta,anaya.gupta@example.com,Marketing,Marketing Manager,90000,2018-05-10,Active
+E005,Vivaan,Reddy,vivaan.reddy@example.com,Sales,Account Executive,76000,2022-01-17,Active
+E006,Isha,Nair,isha.nair@example.com,Support,Customer Support Lead,68000,2021-09-06,Active
+E007,Arjun,Mehta,arjun.mehta@example.com,Engineering,DevOps Engineer,102000,2017-12-01,Active
+E008,Saanvi,Iyer,saanvi.iyer@example.com,Product,Product Manager,108000,2019-02-18,Active
+E009,Kabir,Joshi,kabir.joshi@example.com,Design,UX Designer,87000,2020-06-29,Active
+E010,Myra,Singh,myra.singh@example.com,Legal,Legal Counsel,115000,2016-10-12,Active

@@ -1,0 +1,94 @@
+name: Floci Integration Test
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install Python dependencies
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          pip install awscli boto3
+
+      - name: Start Floci via Docker Compose
+        run: |
+          set -euo pipefail
+          docker compose up -d
+
+      - name: Wait for Floci endpoint
+        run: |
+          set -euo pipefail
+          for _ in {1..60}; do
+            if curl -fsS http://localhost:4566 >/dev/null 2>&1; then
+              echo "Floci is reachable on http://localhost:4566"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "ERROR: Floci did not become reachable on http://localhost:4566 within 60 seconds" >&2
+          exit 1
+
+      - name: Export AWS environment
+        run: |
+          set -euo pipefail
+          {
+            echo "AWS_ENDPOINT_URL=http://localhost:4566"
+            echo "AWS_DEFAULT_REGION=us-east-1"
+            echo "AWS_ACCESS_KEY_ID=test"
+            echo "AWS_SECRET_ACCESS_KEY=test"
+          } >> "$GITHUB_ENV"
+
+      - name: Provision integration resources
+        run: |
+          set -euo pipefail
+          chmod +x scripts/provision.sh
+          scripts/provision.sh
+
+      - name: Upload CSV to S3
+        run: |
+          set -euo pipefail
+          aws --endpoint-url "$AWS_ENDPOINT_URL" s3 cp employee.csv s3://file-upload/employee.csv
+
+      - name: Wait and assert pipeline result
+        run: |
+          set -euo pipefail
+          python scripts/wait_and_assert.py
+
+      - name: Diagnostics on failure
+        if: failure()
+        run: |
+          set +e
+          echo "=== Docker Compose logs (floci) ==="
+          docker compose logs floci || true
+
+          echo "=== SQS queue attributes ==="
+          QUEUE_URL="$(aws --endpoint-url "$AWS_ENDPOINT_URL" sqs get-queue-url --queue-name floci-sqs --query QueueUrl --output text 2>/dev/null)"
+          if [ -n "$QUEUE_URL" ]; then
+            aws --endpoint-url "$AWS_ENDPOINT_URL" sqs get-queue-attributes \
+              --queue-url "$QUEUE_URL" \
+              --attribute-names ApproximateNumberOfMessages ApproximateNumberOfMessagesNotVisible QueueArn
+          else
+            echo "Queue floci-sqs not found"
+          fi
+
+          echo "=== Lambda logs (if available) ==="
+          aws --endpoint-url "$AWS_ENDPOINT_URL" logs tail /aws/lambda/floci-lambda --since 1h || true
+
+          echo "=== DynamoDB scan count ==="
+          aws --endpoint-url "$AWS_ENDPOINT_URL" dynamodb scan --table-name floci-dynamodb-table --select COUNT || true
