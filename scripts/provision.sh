@@ -48,9 +48,10 @@ else
   policy_json="{\"Version\":\"2012-10-17\",\"Statement\":[{\"Sid\":\"AllowS3ToSend\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"s3.amazonaws.com\"},\"Action\":\"sqs:SendMessage\",\"Resource\":\"${queue_arn}\",\"Condition\":{\"ArnEquals\":{\"aws:SourceArn\":\"arn:aws:s3:::${BUCKET_NAME}\"}}}]}"
 fi
 queue_attrs_file="${REPO_ROOT}/.tmp-sqs-attributes.json"
+escaped_policy_json="$(printf '%s' "${policy_json}" | sed 's/\\/\\\\/g; s/"/\\"/g')"
 cat > "${queue_attrs_file}" <<EOF
 {
-  "Policy": ${policy_json}
+  "Policy": "${escaped_policy_json}"
 }
 EOF
 aws_cmd sqs set-queue-attributes --queue-url "${queue_url}" --attributes "file://${queue_attrs_file}" >/dev/null
