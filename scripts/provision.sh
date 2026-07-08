@@ -47,7 +47,14 @@ if [[ -f "${policy_file}" ]]; then
 else
   policy_json="{\"Version\":\"2012-10-17\",\"Statement\":[{\"Sid\":\"AllowS3ToSend\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"s3.amazonaws.com\"},\"Action\":\"sqs:SendMessage\",\"Resource\":\"${queue_arn}\",\"Condition\":{\"ArnEquals\":{\"aws:SourceArn\":\"arn:aws:s3:::${BUCKET_NAME}\"}}}]}"
 fi
-aws_cmd sqs set-queue-attributes --queue-url "${queue_url}" --attributes "Policy=${policy_json}" >/dev/null
+queue_attrs_file="${REPO_ROOT}/.tmp-sqs-attributes.json"
+cat > "${queue_attrs_file}" <<EOF
+{
+  "Policy": ${policy_json}
+}
+EOF
+aws_cmd sqs set-queue-attributes --queue-url "${queue_url}" --attributes "file://${queue_attrs_file}" >/dev/null
+rm -f "${queue_attrs_file}"
 
 echo "Ensuring S3 bucket ${BUCKET_NAME} exists..."
 if ! aws_cmd s3api head-bucket --bucket "${BUCKET_NAME}" >/dev/null 2>&1; then
